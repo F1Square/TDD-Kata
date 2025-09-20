@@ -6,7 +6,8 @@ import {
   updateSweet, 
   deleteSweet,
   purchaseSweet,
-  restockSweet
+  restockSweet,
+  getCategories
 } from '../controllers/sweetController';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 
@@ -20,6 +21,9 @@ router.post('/', requireAdmin, addSweet);
 
 // GET /api/sweets - Get all sweets
 router.get('/', getAllSweets);
+
+// GET /api/sweets/categories - Get available categories (Admin only)
+router.get('/categories', requireAdmin, getCategories);
 
 // GET /api/sweets/search - Search sweets
 router.get('/search', searchSweets);

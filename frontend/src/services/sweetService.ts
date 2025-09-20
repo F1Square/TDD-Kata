@@ -4,7 +4,6 @@ import { config } from '../config/config';
 
 const API_BASE_URL = config.API_BASE_URL;
 
-// Sweet interface matching backend
 export interface Sweet {
   id?: string;
   _id?: string;
@@ -161,6 +160,20 @@ class SweetService {
       sweet: data.sweet,
       restockedQuantity: data.restockedQuantity,
     };
+  }
+
+  async getCategories(): Promise<Array<{category: string, imageUrl: string}>> {
+    const response = await fetch(`${API_BASE_URL}/sweets/categories`, {
+      headers: this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch categories');
+    }
+
+    const data = await response.json();
+    return data.categories;
   }
 }
 

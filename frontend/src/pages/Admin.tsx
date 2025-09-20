@@ -12,7 +12,7 @@ import { Plus, Edit, Trash2, Package, TrendingUp, DollarSign, Users, Upload, X }
 import { Sweet } from "@/components/SweetCard";
 import { sweetService, Sweet as BackendSweet } from "@/services/sweetService";
 import { orderService, Order, OrderStats } from "@/services/orderService";
-import { imageService } from "@/services/imageService";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
@@ -23,16 +23,21 @@ export const Admin = () => {
   const [selectedSweet, setSelectedSweet] = useState<BackendSweet | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [newProductForm, setNewProductForm] = useState({
+    name: "",
+    category: "",
+    price: 0,
+    quantity: 0,
+    description: "",
+    imageUrl: ""
+  });
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [userStats, setUserStats] = useState<{ totalUsers: number; adminUsers: number; regularUsers: number } | null>(null);
-  const { toast } = useToast();
 
-  // Define categories
-  const categories = ["All", "Chocolates", "Macarons", "Cotton Candy", "Lollipops", "Gummies", "Hard Candy"];
+  const [userStats, setUserStats] = useState<{ totalUsers: number; adminUsers: number; regularUsers: number } | null>(null);
+  const [categories, setCategories] = useState<Array<{category: string, imageUrl: string}>>([]);
+  const { toast } = useToast();
 
   // Load sweets from backend
   useEffect(() => {
@@ -53,6 +58,18 @@ export const Admin = () => {
     };
 
     loadSweets();
+    
+    // Load categories
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await sweetService.getCategories();
+        setCategories(categoriesData);
+      } catch (error: any) {
+        console.error('Failed to load categories:', error);
+      }
+    };
+    
+    loadCategories();
   }, [toast]);
 
   // Load orders and stats
@@ -92,13 +109,14 @@ export const Admin = () => {
   }, []);
 
   const handleAddSweet = () => {
+    const defaultCategory = categories.length > 0 ? categories[0] : null;
     setSelectedSweet({
       name: "",
-      category: "Chocolates",
+      category: defaultCategory?.category || "Chocolate",
       price: 0,
       quantity: 0,
       description: "",
-      imageUrl: ""
+      imageUrl: defaultCategory?.imageUrl || ""
     });
     setIsEditing(true);
   };
@@ -161,12 +179,15 @@ export const Admin = () => {
     if (!selectedSweet) return;
 
     try {
-      if (selectedSweet._id || selectedSweet.id) {
+      const sweetId = selectedSweet._id || selectedSweet.id;
+      if (sweetId) {
         // Update existing
-        const updated = await sweetService.updateSweet(selectedSweet._id || selectedSweet.id || '', selectedSweet);
-        setSweets(sweets.map(sweet => 
-          (sweet._id || sweet.id) === (selectedSweet._id || selectedSweet.id) ? updated : sweet
-        ));
+        console.log('Updating sweet with ID:', sweetId, 'Data:', selectedSweet);
+        const updated = await sweetService.updateSweet(sweetId, selectedSweet);
+        setSweets(sweets.map(sweet => {
+          const currentSweetId = sweet._id || sweet.id;
+          return currentSweetId === sweetId ? updated : sweet;
+        }));
         toast({
           title: "Sweet updated successfully",
           description: "Your changes have been saved.",
@@ -192,49 +213,42 @@ export const Admin = () => {
     }
   };
 
-  // Image upload handlers
-  const handleImageUpload = async (file: File) => {
-    try {
-      setImageUploading(true);
-      const result = await imageService.uploadImage(file);
-      
-      if (selectedSweet) {
-        setSelectedSweet({
-          ...selectedSweet,
-          imageUrl: result.imageUrl
-        });
-      }
-      
+  const handleAddNewProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductForm.name || !newProductForm.category || newProductForm.price <= 0) {
       toast({
-        title: "Image uploaded successfully",
-        description: "The image has been uploaded to Cloudinary.",
+        title: "Validation Error", 
+        description: "Please fill in all required fields with valid values.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newSweet = await sweetService.addSweet(newProductForm);
+      setSweets([...sweets, newSweet]);
+      setNewProductForm({
+        name: "",
+        category: "",
+        price: 0,
+        quantity: 0,
+        description: "",
+        imageUrl: ""
+      });
+      toast({
+        title: "Product added successfully",
+        description: "New sweet has been added to your inventory.",
       });
     } catch (error: any) {
       toast({
-        title: "Failed to upload image",
+        title: "Failed to add product",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setImageUploading(false);
-      setSelectedFile(null);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({
-          title: "File too large",
-          description: "Please select an image smaller than 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
+
 
   const totalValue = sweets.reduce((sum, sweet) => sum + (sweet.price * sweet.quantity), 0);
   const lowStockItems = sweets.filter(sweet => sweet.quantity < 10).length;
@@ -320,7 +334,7 @@ export const Admin = () => {
         <Tabs defaultValue="inventory" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
-            <TabsTrigger value="add-product">Add/Edit Product</TabsTrigger>
+            <TabsTrigger value="add-product">Add Product</TabsTrigger>
             <TabsTrigger value="orders" onClick={loadOrders}>Order History</TabsTrigger>
           </TabsList>
 
@@ -434,195 +448,131 @@ export const Admin = () => {
             <Card className="border-candy-pink/20">
               <CardHeader>
                 <CardTitle className="text-candy-pink">
-                  {isEditing ? (selectedSweet?.id ? "Edit Product" : "Add New Product") : "Product Form"}
+                  Add New Product
                 </CardTitle>
                 <CardDescription>
-                  {isEditing ? "Fill in the product details" : "Select a product to edit or add a new one"}
+                  Fill in the product details to add a new item to your inventory
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {isEditing && selectedSweet ? (
-                  <form onSubmit={handleSaveSweet} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Product Name</Label>
-                        <Input
-                          id="name"
-                          value={selectedSweet.name}
-                          onChange={(e) => setSelectedSweet({...selectedSweet, name: e.target.value})}
-                          className="border-candy-pink/20 focus:border-candy-pink"
-                          required
-                        />
-                      </div>
+                <form onSubmit={handleAddNewProduct} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="add-name">Product Name</Label>
+                      <Input
+                        id="add-name"
+                        value={newProductForm.name}
+                        onChange={(e) => setNewProductForm({...newProductForm, name: e.target.value})}
+                        className="border-candy-pink/20 focus:border-candy-pink"
+                        required
+                      />
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                          value={selectedSweet.category}
-                          onValueChange={(value) => setSelectedSweet({...selectedSweet, category: value})}
-                        >
-                          <SelectTrigger className="border-candy-pink/20 focus:border-candy-pink">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.filter(cat => cat !== "All").map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="add-price">Price ($)</Label>
+                      <Input
+                        id="add-price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newProductForm.price}
+                        onChange={(e) => setNewProductForm({...newProductForm, price: parseFloat(e.target.value) || 0})}
+                        className="border-candy-pink/20 focus:border-candy-pink"
+                        required
+                      />
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="price">Price ($)</Label>
-                        <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          value={selectedSweet.price}
-                          onChange={(e) => setSelectedSweet({...selectedSweet, price: parseFloat(e.target.value) || 0})}
-                          className="border-candy-pink/20 focus:border-candy-pink"
-                          required
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="add-quantity">Stock Quantity</Label>
+                      <Input
+                        id="add-quantity"
+                        type="number"
+                        min="0"
+                        value={newProductForm.quantity}
+                        onChange={(e) => setNewProductForm({...newProductForm, quantity: parseInt(e.target.value) || 0})}
+                        className="border-candy-pink/20 focus:border-candy-pink"
+                        required
+                      />
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="quantity">Stock Quantity</Label>
-                        <Input
-                          id="quantity"
-                          type="number"
-                          value={selectedSweet.quantity}
-                          onChange={(e) => setSelectedSweet({...selectedSweet, quantity: parseInt(e.target.value) || 0})}
-                          className="border-candy-pink/20 focus:border-candy-pink"
-                          required
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="add-category">Category</Label>
+                      <Select 
+                        value={newProductForm.category} 
+                        onValueChange={(value) => {
+                          const categoryData = categories.find(c => c.category === value);
+                          setNewProductForm({
+                            ...newProductForm,
+                            category: value,
+                            imageUrl: categoryData?.imageUrl || ""
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((categoryItem) => (
+                            <SelectItem key={categoryItem.category} value={categoryItem.category}>
+                              {categoryItem.category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="add-description">Description</Label>
+                      <Textarea
+                        id="add-description"
+                        value={newProductForm.description}
+                        onChange={(e) => setNewProductForm({...newProductForm, description: e.target.value})}
+                        className="border-candy-pink/20 focus:border-candy-pink"
+                        rows={3}
+                        placeholder="Describe your sweet product..."
+                      />
+                    </div>
+
+                    {newProductForm.imageUrl && (
                       <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="image">Product Image</Label>
-                        <div className="space-y-4">
-                          {/* Current Image Preview */}
-                          {selectedSweet.imageUrl && (
-                            <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
-                              <img
-                                src={selectedSweet.imageUrl}
-                                alt="Product preview"
-                                className="w-full h-full object-cover"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-1 right-1 bg-black/50 hover:bg-black/70"
-                                onClick={() => setSelectedSweet({...selectedSweet, imageUrl: ""})}
-                              >
-                                <X className="h-3 w-3 text-white" />
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* File Upload */}
-                          <div className="flex items-center space-x-4">
-                            <input
-                              type="file"
-                              id="image-upload"
-                              accept="image/*"
-                              onChange={handleFileSelect}
-                              className="hidden"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => document.getElementById('image-upload')?.click()}
-                              disabled={imageUploading}
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              {imageUploading ? "Uploading..." : "Choose Image"}
-                            </Button>
-                            
-                            {selectedFile && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground">{selectedFile.name}</span>
-                                <Button
-                                  type="button"
-                                  variant="candy"
-                                  size="sm"
-                                  onClick={() => handleImageUpload(selectedFile)}
-                                  disabled={imageUploading}
-                                >
-                                  {imageUploading ? "Uploading..." : "Upload"}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedFile(null)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Manual URL Input (fallback) */}
-                          <div className="space-y-2">
-                            <Label htmlFor="image-url">Or enter image URL manually:</Label>
-                            <Input
-                              id="image-url"
-                              value={selectedSweet.imageUrl || ""}
-                              onChange={(e) => setSelectedSweet({...selectedSweet, imageUrl: e.target.value})}
-                              className="border-candy-pink/20 focus:border-candy-pink"
-                              placeholder="https://example.com/image.jpg"
-                            />
+                        <Label>Image Preview</Label>
+                        <div className="flex items-center space-x-4">
+                          <img
+                            src={newProductForm.imageUrl}
+                            alt="Product preview"
+                            className="w-20 h-20 object-cover rounded-lg border"
+                          />
+                          <div className="text-sm text-muted-foreground">
+                            <p>Category: {newProductForm.category}</p>
+                            <p>Auto-generated image</p>
                           </div>
                         </div>
                       </div>
+                    )}
+                  </div>
 
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={selectedSweet.description}
-                          onChange={(e) => setSelectedSweet({...selectedSweet, description: e.target.value})}
-                          className="border-candy-pink/20 focus:border-candy-pink"
-                          rows={3}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-4 pt-6">
-                      <Button type="submit" variant="candy">
-                        {selectedSweet.id ? "Update Product" : "Add Product"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setSelectedSweet(null);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="text-center py-12">
-                    <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                      No Product Selected
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      Select a product from the inventory to edit, or add a new product
-                    </p>
-                    <Button variant="candy" onClick={handleAddSweet}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Product
+                  <div className="flex gap-4 pt-6">
+                    <Button type="submit" variant="candy" className="flex-1">
+                      Add Product
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setNewProductForm({
+                          name: "",
+                          category: "",
+                          price: 0,
+                          quantity: 0,
+                          description: "",
+                          imageUrl: ""
+                        });
+                      }}
+                    >
+                      Clear Form
                     </Button>
                   </div>
-                )}
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

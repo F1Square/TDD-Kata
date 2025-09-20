@@ -3,10 +3,11 @@ import { Sweet } from '../models/Sweet';
 import { Order } from '../models/Order';
 import { User } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { getDummyImageUrl, getAvailableCategories } from '../utils/dummyImages';
 
 export const addSweet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, category, price, quantity, description, imageUrl } = req.body;
+    const { name, category, price, quantity, description } = req.body;
 
     // Validate input
     if (!name || !category || price === undefined || quantity === undefined) {
@@ -18,6 +19,9 @@ export const addSweet = async (req: AuthRequest, res: Response): Promise<void> =
       res.status(400).json({ message: 'Price and quantity must be non-negative' });
       return;
     }
+
+    // Generate dummy image based on category
+    const imageUrl = getDummyImageUrl(category);
 
     // Create sweet
     const sweet = new Sweet({
@@ -83,7 +87,7 @@ export const searchSweets = async (req: AuthRequest, res: Response): Promise<voi
 export const updateSweet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, category, price, quantity, description, imageUrl } = req.body;
+    const { name, category, price, quantity, description } = req.body;
 
     // Validate input
     if (price !== undefined && price < 0) {
@@ -96,9 +100,15 @@ export const updateSweet = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    // Generate new dummy image if category is being updated
+    const updateData: any = { name, category, price, quantity, description };
+    if (category) {
+      updateData.imageUrl = getDummyImageUrl(category);
+    }
+
     const sweet = await Sweet.findByIdAndUpdate(
       id,
-      { name, category, price, quantity, description, imageUrl },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -235,6 +245,17 @@ export const restockSweet = async (req: AuthRequest, res: Response): Promise<voi
     });
   } catch (error) {
     console.error('Restock sweet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get available categories with dummy images
+export const getCategories = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const categories = getAvailableCategories();
+    res.status(200).json({ categories });
+  } catch (error) {
+    console.error('Get categories error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

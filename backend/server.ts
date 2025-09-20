@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 import authRoutes from './src/routes/auth';
 import sweetRoutes from './src/routes/sweets';
 import orderRoutes from './src/routes/orders';
-import imageRoutes from './src/routes/images';
 import { User } from './src/models/User';
 import bcrypt from 'bcryptjs';
 
@@ -19,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
 // Seed default admin user
 const seedAdminUser = async () => {
@@ -68,8 +67,6 @@ mongoose.connect(MONGODB_URI)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sweets', sweetRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/images', imageRoutes);
 app.use('/api/orders', orderRoutes);
 
 app.get('/', (req: Request, res: Response) => {

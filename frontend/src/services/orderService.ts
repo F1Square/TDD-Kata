@@ -1,4 +1,5 @@
 import { config } from '../config/config';
+import { authService } from './authService';
 
 const API_BASE_URL = config.API_BASE_URL;
 
@@ -33,10 +34,10 @@ export interface OrderStats {
 
 class OrderService {
   private getAuthHeader() {
-    const token = localStorage.getItem('token');
+    const token = authService.getToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      ...(token && { 'Authorization': `Bearer ${token}` })
     };
   }
 

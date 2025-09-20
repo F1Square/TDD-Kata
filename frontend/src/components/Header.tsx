@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ShoppingBag, User, Menu, X, LogOut } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, X, LogOut, Badge as BadgeIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useCart } from "../contexts/CartContext";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { getTotalItems } = useCart();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -63,8 +66,21 @@ export const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <ShoppingBag className="h-5 w-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hidden md:flex relative"
+              onClick={() => navigate('/cart')}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {getTotalItems() > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {getTotalItems()}
+                </Badge>
+              )}
             </Button>
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">

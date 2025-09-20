@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Heart, Star } from "lucide-react";
+import { ShoppingCart, Heart, Star, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 export interface Sweet {
   id?: string;
@@ -25,19 +27,33 @@ interface SweetCardProps {
   onPurchase?: (sweetId: string) => void;
   onFavorite?: (sweetId: string) => void;
   className?: string;
+  showQuickBuy?: boolean;
 }
 
-export const SweetCard = ({ sweet, onPurchase, onFavorite, className }: SweetCardProps) => {
+export const SweetCard = ({ sweet, onPurchase, onFavorite, className, showQuickBuy = true }: SweetCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorited, setIsFavorited] = useState(sweet.isFavorite || false);
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   const handleFavorite = () => {
     setIsFavorited(!isFavorited);
     onFavorite?.(sweet._id || sweet.id || '');
   };
 
-  const handlePurchase = () => {
+  const handleAddToCart = () => {
     if (sweet.quantity > 0) {
+      addToCart(sweet, 1);
+      toast({
+        title: "Added to cart",
+        description: `${sweet.name} has been added to your cart.`,
+      });
+    }
+  };
+
+  const handleQuickBuy = () => {
+    if (sweet.quantity > 0) {
+      // For quick buy, we'll use the original onPurchase function (direct purchase)
       onPurchase?.(sweet._id || sweet.id || '');
     }
   };
@@ -96,11 +112,11 @@ export const SweetCard = ({ sweet, onPurchase, onFavorite, className }: SweetCar
           <Button
             variant="candy"
             size="lg"
-            onClick={handlePurchase}
+            onClick={handleQuickBuy}
             disabled={sweet.quantity === 0}
             className="transform scale-95 group-hover:scale-100 transition-transform duration-300"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <Zap className="h-4 w-4 mr-2" />
             Quick Buy
           </Button>
         </div>
@@ -142,7 +158,7 @@ export const SweetCard = ({ sweet, onPurchase, onFavorite, className }: SweetCar
         
         <Button
           variant={sweet.quantity > 0 ? "candy" : "outline"}
-          onClick={handlePurchase}
+          onClick={handleAddToCart}
           disabled={sweet.quantity === 0}
           className="min-w-[100px]"
         >

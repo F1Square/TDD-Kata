@@ -131,3 +131,29 @@ export const getUserStats = async (req: AuthRequest, res: Response): Promise<voi
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+export const validateToken = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // If we reach here, the token is valid (thanks to authenticateToken middleware)
+    // req.user is already populated by the middleware
+    const user = req.user;
+    
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Token is valid',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};

@@ -8,12 +8,14 @@ import heroImage from "@/assets/hero-sweets.jpg";
 import { SweetCard } from "@/components/SweetCard";
 import { sweetService, Sweet as BackendSweet } from "@/services/sweetService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export const Home = () => {
   const navigate = useNavigate();
   const [featuredSweets, setFeaturedSweets] = useState<BackendSweet[]>([]);
   const [loading, setLoading] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   // Load featured sweets from backend
   useEffect(() => {
@@ -34,6 +36,41 @@ export const Home = () => {
 
     loadFeaturedSweets();
   }, [isAuthenticated]);
+
+  const handlePurchase = async (sweetId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to purchase sweets.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await sweetService.purchaseSweet(sweetId, 1);
+      
+      // Update the featured sweets list with the new quantity
+      setFeaturedSweets(prevSweets => 
+        prevSweets.map(sweet => 
+          (sweet._id || sweet.id) === sweetId 
+            ? { ...sweet, quantity: result.sweet.quantity }
+            : sweet
+        )
+      );
+
+      toast({
+        title: "Purchase successful!",
+        description: `You purchased 1 unit. ${result.sweet.quantity} units remaining.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Purchase failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -107,7 +144,7 @@ export const Home = () => {
                 <SweetCard
                   key={sweet._id || sweet.id}
                   sweet={sweet as any}
-                  onPurchase={(id) => console.log(`Purchase ${id}`)}
+                  onPurchase={handlePurchase}
                   onFavorite={(id) => console.log(`Favorite ${id}`)}
                 />
               ))
