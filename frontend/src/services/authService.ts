@@ -106,6 +106,20 @@ class AuthService {
     this.removeToken();
     this.removeCurrentUser();
   }
+
+  async getUserStats(): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
+    const response = await fetch(`${API_BASE_URL}/auth/stats`, {
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user statistics');
+    }
+
+    return await response.json();
+  }
 }
 
 export const authService = new AuthService();

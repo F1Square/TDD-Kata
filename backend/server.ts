@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://hyitzabhi_db_user:F2FXFmyQrHeNHC8S@cluster0.zl3mtny.mongodb.net/shop_management';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 // Seed default admin user
 const seedAdminUser = async () => {

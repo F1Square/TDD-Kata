@@ -10,4 +10,7 @@ router.post('/register', register);
 // POST /api/auth/login
 router.post('/login', login);
 
+// GET /api/auth/stats (admin only)
+router.get('/stats', authenticateToken, requireAdmin, getUserStats);
+
 export default router;

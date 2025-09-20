@@ -14,6 +14,7 @@ import { sweetService, Sweet as BackendSweet } from "@/services/sweetService";
 import { orderService, Order, OrderStats } from "@/services/orderService";
 import { imageService } from "@/services/imageService";
 import { useAuth } from "@/contexts/AuthContext";
+import { authService } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 
 export const Admin = () => {
@@ -27,6 +28,7 @@ export const Admin = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [userStats, setUserStats] = useState<{ totalUsers: number; adminUsers: number; regularUsers: number } | null>(null);
   const { toast } = useToast();
 
   // Define categories
@@ -73,6 +75,21 @@ export const Admin = () => {
       setOrdersLoading(false);
     }
   };
+
+  // Load user stats
+  const loadUserStats = async () => {
+    try {
+      const stats = await authService.getUserStats();
+      setUserStats(stats);
+    } catch (error: any) {
+      console.error('Failed to load user stats:', error);
+    }
+  };
+
+  // Load user stats on component mount
+  useEffect(() => {
+    loadUserStats();
+  }, []);
 
   const handleAddSweet = () => {
     setSelectedSweet({
@@ -289,8 +306,10 @@ export const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                  <p className="text-3xl font-bold text-candy-purple">1,234</p>
+                  <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                  <p className="text-3xl font-bold text-candy-purple">
+                    {userStats ? userStats.totalUsers : 'Loading...'}
+                  </p>
                 </div>
                 <Users className="h-8 w-8 text-candy-purple" />
               </div>
