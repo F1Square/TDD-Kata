@@ -107,6 +107,28 @@ class AuthService {
     this.removeCurrentUser();
   }
 
+  async validateToken(): Promise<User> {
+    if (!this.token) {
+      throw new Error('No token available');
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    });
+
+    if (!response.ok) {
+      // Clear invalid token
+      this.removeToken();
+      this.removeCurrentUser();
+      throw new Error('Token validation failed');
+    }
+
+    const data = await response.json();
+    return data.user;
+  }
+
   async getUserStats(): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
     const response = await fetch(`${API_BASE_URL}/auth/stats`, {
       headers: {

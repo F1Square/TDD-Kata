@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService, User, LoginRequest, RegisterRequest } from '../services/authService';
+import { config } from '../config/config';
 
 interface AuthContextType {
   user: User | null;
@@ -12,7 +13,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
@@ -26,33 +27,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const validateAndRestoreSession = async () => {
-      const currentUser = authService.getCurrentUser();
-      const token = authService.getToken();
-      
-      if (currentUser && token) {
-        try {
-          // Validate token by making a request to backend
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/validate`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          } else {
-            // Token is invalid, clear auth data
-            authService.logout();
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('Token validation failed:', error);
+      try {
+        const currentUser = authService.getCurrentUser();
+        const token = authService.getToken();
+        
+        if (currentUser && token) {
+          // Validate token with backend
+          const validatedUser = await authService.validateToken();
+          setUser(validatedUser);
+        } else {
+          // No stored user or token, ensure clean state
           authService.logout();
           setUser(null);
         }
+      } catch (error) {
+        // Token validation failed - clear everything and redirect to auth
+        console.warn('Session validation failed, clearing auth state');
+        authService.logout();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     validateAndRestoreSession();
@@ -87,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
