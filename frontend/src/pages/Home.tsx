@@ -37,40 +37,7 @@ export const Home = () => {
     loadFeaturedSweets();
   }, [isAuthenticated]);
 
-  const handlePurchase = async (sweetId: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to purchase sweets.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    try {
-      const result = await sweetService.purchaseSweet(sweetId, 1);
-      
-      // Update the featured sweets list with the new quantity
-      setFeaturedSweets(prevSweets => 
-        prevSweets.map(sweet => 
-          (sweet._id || sweet.id) === sweetId 
-            ? { ...sweet, quantity: result.sweet.quantity }
-            : sweet
-        )
-      );
-
-      toast({
-        title: "Purchase successful!",
-        description: `You purchased 1 unit. ${result.sweet.quantity} units remaining.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Purchase failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen">
@@ -108,15 +75,7 @@ export const Home = () => {
                 Explore Catalog
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
-              
-              <Button
-                variant="sweet"
-                size="lg"
-                className="text-lg px-8 py-4 h-auto bg-white/20 backdrop-blur border-white/30 text-white hover:bg-white/30"
-              >
-                <Gift className="h-5 w-5 mr-2" />
-                Gift Collections
-              </Button>
+            
             </div>
           </div>
         </div>
@@ -144,7 +103,6 @@ export const Home = () => {
                 <SweetCard
                   key={sweet._id || sweet.id}
                   sweet={sweet as any}
-                  onPurchase={handlePurchase}
                   onFavorite={(id) => console.log(`Favorite ${id}`)}
                 />
               ))

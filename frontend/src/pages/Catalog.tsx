@@ -43,40 +43,7 @@ export const Catalog = () => {
     loadSweets();
   }, [isAuthenticated, toast]);
 
-  const handlePurchase = async (sweetId: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to purchase sweets.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    try {
-      const result = await sweetService.purchaseSweet(sweetId, 1);
-      
-      // Update the sweets list with the new quantity
-      setSweets(prevSweets => 
-        prevSweets.map(sweet => 
-          (sweet._id || sweet.id) === sweetId 
-            ? { ...sweet, quantity: result.sweet.quantity }
-            : sweet
-        )
-      );
-
-      toast({
-        title: "Purchase successful!",
-        description: `You purchased 1 unit. ${result.sweet.quantity} units remaining.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Purchase failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const filteredAndSortedSweets = useMemo(() => {
     let filtered = sweets.filter((sweet) => {
@@ -202,7 +169,6 @@ export const Catalog = () => {
             <SweetCard
               key={sweet._id || sweet.id}
               sweet={sweet as any}
-              onPurchase={handlePurchase}
               onFavorite={(id) => console.log(`Favorite ${id}`)}
               className="hover:shadow-lg hover:shadow-candy-pink/20"
             />

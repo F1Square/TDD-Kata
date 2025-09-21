@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Heart, Star, Zap } from "lucide-react";
+import { ShoppingCart, Heart, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -24,13 +24,11 @@ export interface Sweet {
 
 interface SweetCardProps {
   sweet: Sweet;
-  onPurchase?: (sweetId: string) => void;
   onFavorite?: (sweetId: string) => void;
   className?: string;
-  showQuickBuy?: boolean;
 }
 
-export const SweetCard = ({ sweet, onPurchase, onFavorite, className, showQuickBuy = true }: SweetCardProps) => {
+export const SweetCard = ({ sweet, onFavorite, className }: SweetCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorited, setIsFavorited] = useState(sweet.isFavorite || false);
   const { addToCart } = useCart();
@@ -51,12 +49,7 @@ export const SweetCard = ({ sweet, onPurchase, onFavorite, className, showQuickB
     }
   };
 
-  const handleQuickBuy = () => {
-    if (sweet.quantity > 0) {
-      // For quick buy, we'll use the original onPurchase function (direct purchase)
-      onPurchase?.(sweet._id || sweet.id || '');
-    }
-  };
+
 
   return (
     <Card 
@@ -104,22 +97,7 @@ export const SweetCard = ({ sweet, onPurchase, onFavorite, className, showQuickB
           />
         </Button>
 
-        {/* Quick purchase overlay */}
-        <div className={cn(
-          "absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity duration-300",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}>
-          <Button
-            variant="candy"
-            size="lg"
-            onClick={handleQuickBuy}
-            disabled={sweet.quantity === 0}
-            className="transform scale-95 group-hover:scale-100 transition-transform duration-300"
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Quick Buy
-          </Button>
-        </div>
+
       </div>
 
       <CardContent className="p-4">
